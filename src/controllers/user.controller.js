@@ -1,4 +1,5 @@
 const User = require('../schema/user.schema');
+const Post = require('../schema/post.schema');
 
 module.exports.getUsersWithPostCount = async (req, res) => {
     try {
@@ -10,21 +11,33 @@ module.exports.getUsersWithPostCount = async (req, res) => {
         var totalPages = totalDocs / limit;
 
 
-        const userData = await User.find({}).skip(skip).limit(limit);
+        const userData = await User.aggregate([
+            { $skip: skip },
+            { $limit: limit },
+            { $project: {_id: 1, name: 1} },
+            { $lookup: {
+                from: "Post",
+                localField: "_id",
+                foreignField: "userId",
+                as: "posts"
+            } }
+        ])
         // console.log(userData);
 
         res.status(200).json({
-            users: userData,
-            pagination: {
-                "totalDocs": totalDocs,
-                "limit": limit,
-                "page": page,
-                "totalPages": totalPages,
-                "pagingCounter": page,
-                "hasPrevPage": page === 1 ? false : true,
-                "hasNextPage": page < totalPages ? true : false,
-                "prevPage": page === 1 ? null : page - 1,
-                "nextPage": page < totalPages ? page + 1 : null
+            data: {
+                users: userData,
+                pagination: {
+                    "totalDocs": totalDocs,
+                    "limit": limit,
+                    "page": page,
+                    "totalPages": totalPages,
+                    "pagingCounter": page,
+                    "hasPrevPage": page === 1 ? false : true,
+                    "hasNextPage": page < totalPages ? true : false,
+                    "prevPage": page === 1 ? null : page - 1,
+                    "nextPage": page < totalPages ? page + 1 : null
+                }
             }
         })
     } catch (error) {
